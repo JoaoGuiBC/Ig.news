@@ -14,19 +14,31 @@ export default NextAuth({
     }),
   ],
 
-  jwt: {
-    signingKey: process.env.SIGNING_KEY,
-  },
-
   callbacks: {
     async signIn(user, aacount, profile) {
       const { email } = user;
 
       try {
         await fauna.query(
-          query.Create(
-            query.Collection('users'),
-            { data: { email } }
+          query.If(
+            query.Not(
+              query.Exists(
+                query.Match(
+                  query.Index('user_by_email'),
+                  query.Casefold(email),
+                )
+              )
+            ),
+            query.Create(
+              query.Collection('users'),
+              { data: { email } }
+            ),
+            query.Get(
+              query.Match(
+                query.Index('user_by_email'),
+                query.Casefold(email),
+              )
+            )
           )
         )
 
